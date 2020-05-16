@@ -5,6 +5,9 @@
 #include <cstring>
 #include <unistd.h>
 #include <cstdlib>
+#include <limits>
+#include <algorithm>
+#include <math.h>
 
 extern "C" {
 static jbyteArray *_holdBuffer = NULL;
@@ -16,18 +19,19 @@ static jobject _directBuffer = NULL;
 JNIEXPORT
 jobject JNICALL Java_com_example_zipfileinmemoryjni_JniByteArrayHolder_allocate(
         JNIEnv *env, jobject obj, jlong size) {
-
     if (_holdBuffer != NULL || _directBuffer != NULL) {
         __android_log_print(ANDROID_LOG_ERROR, "JNI Routine",
                             "Call to JNI allocate() before freeBuffer()");
         return NULL;
     }
 
-    if (size > SIZE_T_MAX || size <= 0) {
-        jlong size_t_max = SIZE_T_MAX;
+    // Max size for a direct buffer is the max of a jint even though NewDirectByteBuffer takes a
+    // long. Clamp max size as follows:
+    if (size > SIZE_T_MAX || size > INT_MAX || size <= 0) {
+        jlong maxSize = SIZE_T_MAX < INT_MAX ? SIZE_T_MAX : INT_MAX;
         __android_log_print(ANDROID_LOG_ERROR, "JNI Routine",
                             "Native memory allocation request must be >0 and <= %lld but was %lld.\n",
-                            size_t_max, size);
+                            maxSize, size);
         return NULL;
     }
 
