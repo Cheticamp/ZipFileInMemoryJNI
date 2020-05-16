@@ -18,6 +18,8 @@ package com.example.zipfileinmemoryjni;
  * limitations under the License.
  */
 
+import org.jetbrains.annotations.NotNull;
+
 import java.io.EOFException;
 import java.io.IOException;
 import java.io.InputStream;
@@ -26,7 +28,7 @@ import java.util.List;
 
 /** Utility to present {@link ByteBuffer} data as an {@link InputStream}.*/
 public class ByteBufferInputStream extends InputStream {
-    private List<ByteBuffer> buffers;
+    private final List<ByteBuffer> buffers;
     private int current;
 
     public ByteBufferInputStream(List<ByteBuffer> buffers) {
@@ -43,7 +45,7 @@ public class ByteBufferInputStream extends InputStream {
     /** @see InputStream#read(byte[], int, int)
      * @throws EOFException if EOF is reached before reading all the bytes. */
     @Override
-    public int read(byte[] b, int off, int len) throws IOException {
+    public int read(@NotNull byte[] b, int off, int len) throws IOException {
         if (len == 0) return 0;
         ByteBuffer buffer = getBuffer();
         int remaining = buffer.remaining();
