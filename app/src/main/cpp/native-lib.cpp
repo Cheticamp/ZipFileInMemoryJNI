@@ -18,19 +18,20 @@ static jobject _directBuffer = NULL;
  */
 JNIEXPORT
 jobject JNICALL Java_com_example_zipfileinmemoryjni_JniByteArrayHolder_allocate(
-        JNIEnv *env, jobject obj, jlong size) {
+        JNIEnv *env, jobject obj, jint size) {
+
     if (_holdBuffer != NULL || _directBuffer != NULL) {
         __android_log_print(ANDROID_LOG_ERROR, "JNI Routine",
-                            "Call to JNI allocate() before freeBuffer()");
+                            "Call to JNI allocate() before last buffer freed with freeBuffer()");
         return NULL;
     }
 
     // Max size for a direct buffer is the max of a jint even though NewDirectByteBuffer takes a
     // long. Clamp max size as follows:
-    if (size > SIZE_T_MAX || size > INT_MAX || size <= 0) {
-        jlong maxSize = SIZE_T_MAX < INT_MAX ? SIZE_T_MAX : INT_MAX;
+    if (size <= 0) {
+        jint maxSize = SIZE_T_MAX < INT_MAX ? SIZE_T_MAX : INT_MAX;
         __android_log_print(ANDROID_LOG_ERROR, "JNI Routine",
-                            "Native memory allocation request must be >0 and <= %lld but was %lld.\n",
+                            "Native memory allocation request must be >0 and <= %d but was %d.\n",
                             maxSize, size);
         return NULL;
     }
@@ -38,8 +39,7 @@ jobject JNICALL Java_com_example_zipfileinmemoryjni_JniByteArrayHolder_allocate(
     jbyteArray *array = (jbyteArray *) malloc(static_cast<size_t>(size));
     if (array == NULL) {
         __android_log_print(ANDROID_LOG_ERROR, "JNI Routine",
-                            "Failed to allocate %lld bytes of native memory.\n",
-                            size);
+                            "Failed to allocate %d bytes of native memory.\n", size);
         return NULL;
     }
 
@@ -47,8 +47,7 @@ jobject JNICALL Java_com_example_zipfileinmemoryjni_JniByteArrayHolder_allocate(
     if (directBuffer == NULL) {
         free(array);
         __android_log_print(ANDROID_LOG_ERROR, "JNI Routine",
-                            "Failed to create direct buffer of size %lld.\n",
-                            size);
+                            "Failed to create direct buffer of size %d.\n", size);
         return NULL;
     }
     // memset() is not really needed but we call it here to force Android to count
@@ -83,7 +82,7 @@ JNIEXPORT void JNICALL Java_com_example_zipfileinmemoryjni_JniByteArrayHolder_fr
         return;
     }
 
-    // Free the malloc'ed buffer and the global reference. Java can not GC the direct buffer.
+    // Free the malloc'ed buffer and the global reference. Java can now GC the direct buffer.
     free(bufferLoc);
     env->DeleteGlobalRef(_directBuffer);
     _holdBuffer = NULL;

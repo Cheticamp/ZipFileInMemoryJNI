@@ -26,10 +26,11 @@ class MainActivity : AppCompatActivity() {
 
         thread {
             printMemStats("Before buffer allocation:")
-            var bufferSize = 0L
+            var bufferSize: Long
             // testzipfile.zip is not part of the project but any zip can be uploaded through the
             // device file manager or adb to test.
             val fileToRead = "$filesDir/testzipfile.zip"
+
             val inStream =
                 if (File(fileToRead).exists()) {
                     FileInputStream(fileToRead).apply {
@@ -46,11 +47,21 @@ class MainActivity : AppCompatActivity() {
                     }
                     resources.openRawResource(R.raw.appapk)
                 }
+            if (bufferSize > Int.MAX_VALUE) {
+                Log.d("Applog", "File size exceeds maximum of ${Int.MAX_VALUE}")
+                inStream.close()
+                runOnUiThread {
+                    showIdle()
+                    Log.d("Applog", "Error!")
+                }
+                return@thread
+            }
+
             // Allocate the buffer in native memory (off-heap).
             val jniByteArrayHolder = JniByteArrayHolder()
             val byteBuffer =
                 if (bufferSize != 0L) {
-                    jniByteArrayHolder.allocate(bufferSize)?.apply {
+                    jniByteArrayHolder.allocate(bufferSize.toInt())?.apply {
                         printMemStats("After buffer allocation")
                     }
                 } else {
@@ -60,7 +71,10 @@ class MainActivity : AppCompatActivity() {
             if (byteBuffer == null) {
                 Log.d("Applog", "Failed to allocate $bufferSize bytes of native memory.")
             } else {
-                Log.d("Applog", "Allocated ${Formatter.formatFileSize(this, bufferSize)} buffer.")
+                Log.d(
+                    "Applog",
+                    "Allocated ${Formatter.formatFileSize(this, bufferSize)} buffer."
+                )
                 val inBytes = ByteArray(4096)
                 Log.d("Applog", "Starting buffered read...")
                 while (inStream.available() > 0) {
@@ -83,8 +97,7 @@ class MainActivity : AppCompatActivity() {
                 printMemStats("After buffer release:")
             }
             runOnUiThread {
-                status.text = getString(R.string.idle)
-                button.isEnabled = true
+                showIdle()
                 Log.d("Applog", "Done!")
             }
         }
@@ -121,5 +134,10 @@ class MainActivity : AppCompatActivity() {
             bufferSize += toSkip
         }
         return bufferSize
+    }
+
+    private fun showIdle() {
+        status.text = getString(R.string.idle)
+        button.isEnabled = true
     }
 }
